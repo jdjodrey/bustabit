@@ -7,25 +7,22 @@
  
  // TODO
  // check return code of bet for "GAME_IN_PROGRESS"
- // variable base bet (% of bankroll risked)
  // add timer (setTimeout)
  // include bonuses in profit (not possible in sim mode)
  // calculate profit per hour and per day
- // move totalRisk to maxBet (more accurate)
  // add stop when balance = x option
- // source control
 
 /*
  * User Settings 
  */
 var streakSecurity = 4; // Number of loss streaks you want to be safe for
-var totalRisk = 0.6;	// Fraction of your bankroll you'll lose if a loss streak of streakSecurity + 1 occurs
+var risk = 0.6;	// Fraction of your bankroll you'll lose if a loss streak of streakSecurity + 1 occurs
 						// Range: 0.01 - 1 || Higher = more risk/reward, lower = less risk/reward
 						// Recommend range: 0.25 - 0.75
 
 var restartOnMaxLossStreak = true; 	// (true/false) If true, bot will reinitialize baseBet and cashout amount
 									// when a loss streak of streakSecurity + 1 occurs, otherwise it'll just stop
-									// NOTE: if totalRisk = 1, restarting may not be possible
+									// NOTE: if risk = 1, restarting may not be possible
 						
 var simulation = false;	// (true/false) Setting this to true will make the bot to simulate a betting run
 						// If you've changed any of the user settings, it's always recommended to test...
@@ -63,14 +60,30 @@ var cashoutAmounts =
 											// ...indexing cashoutAmounts with currentLossTreak
 											// NOTE: Length must be equal to streakSecurity + 1
 											
+var riskFactor = 0;
+for (var i = 0; i <= streakSecurity; i++)		// need to some all of the bet multipliers to...
+{												// ...determine what the bankroll is divided by
+	riskFactor += Math.pow(lossMultiplier, i);
+};									
+
+/*
+ * Helper function to calculate the bet amount
+ * based on current balance and user settings
+ */											
+function calcBaseBet()
+{
+	var currentBal = engine.getBalance();	
+	return (risk * currentBal) / riskFactor;
+}
+
 // Calculate initialBaseBet (in satoshi) based on the user settings
-var initialBaseBet = totalRisk * startingBalance * (1/(Math.pow(lossMultiplier, streakSecurity)));
+var initialBaseBet = calcBaseBet();
 
 console.log('========================== EngiNerds\'s BustaBit Bot ==========================');
 console.log('My username is: ' + engine.getUsername());
 console.log('Starting balance: ' + (startingBalance/100).toFixed(2) + ' bits');
-console.log('Risk Tolerance: ' + (totalRisk * 100).toFixed(2) + '%');
-console.log('Inital base bet: ' + Math.round(initialBaseBet/100) + ' bits');
+console.log('Risk Tolerance: ' + (risk * 100).toFixed(2) + '%');
+console.log('Inital base bet: ' + Math.round(initialBaseBet/100) + ' bits (real value ' + (initialBaseBet/100).toFixed(2) + ')');
 
 if (simulation) { console.log('=========================== SIMULATION MODE ENABLED =========================='); };
 
@@ -104,11 +117,11 @@ engine.on('game_starting', function(data)
 		{
 			if (restartOnMaxLossStreak) // start betting over again with recalculated base bet
 			{
-				initialBaseBet = totalRisk * engine.getBalance() * (1/(Math.pow(lossMultiplier, streakSecurity)));
-				currentSatoshiBet = initialBaseBet;
+				currentSatoshiBet = calcBaseBet();
 				currentCashout = baseCashout;
+				currentLossStreak = 0;
 				
-				console.warn(simMsg + '[Bot] Streak security surpassed, reinitializing bet amount to ' + (currentSatoshiBet/100).toFixed(2));
+				console.warn(simMsg + '[Bot] Streak security surpassed, reinitializing bet amount to ' + Math.round(currentSatoshiBet/100));
 			}
 			else // Stop betting for now to lick our wounds
 			{
@@ -117,9 +130,14 @@ engine.on('game_starting', function(data)
 			}
 		}
     }
-	else // Sweet, we won! (or it's the first game)
+	else if (firstGame) // Let's get this show on the road
 	{
 		currentSatoshiBet = initialBaseBet;
+		currentCashout = baseCashout;
+	}
+	else // Sweet, we won! Adjust the bet based on our balance
+	{
+		currentSatoshiBet = calcBaseBet();
 		currentCashout = baseCashout;
 	}
 	
