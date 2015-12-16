@@ -16,7 +16,7 @@
  * User Settings 
  */
 var streakSecurity = 4; // Number of loss streaks you want to be safe for
-var risk = 0.6;	// Fraction of your bankroll you'll lose if a loss streak of streakSecurity + 1 occurs
+var risk = 0.5;	// Fraction of your bankroll you'll lose if a loss streak of streakSecurity + 1 occurs
 						// Range: 0.01 - 1 || Higher = more risk/reward, lower = less risk/reward
 						// Recommend range: 0.25 - 0.75
 
@@ -61,7 +61,7 @@ var cashoutAmounts =
 											// NOTE: Length must be equal to streakSecurity + 1
 											
 var riskFactor = 0;
-for (var i = 0; i <= streakSecurity; i++)		// need to some all of the bet multipliers to...
+for (var i = 0; i <= streakSecurity; i++)		// need to sum all of the bet multipliers to...
 {												// ...determine what the bankroll is divided by
 	riskFactor += Math.pow(lossMultiplier, i);
 };									
